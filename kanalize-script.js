@@ -15,6 +15,8 @@ let isTransitioning = false;
 // Audio variables
 const bgMusic = document.getElementById('bgMusic');
 const selectSound = document.getElementById('selectSound');
+const finishSound = document.getElementById('finishSound');
+const resetSound = document.getElementById('resetSound');
 let isMuted = false;
 let bgMusicStarted = false;
 let selectSoundStarted = false;
@@ -39,6 +41,8 @@ function toggleMute() {
     // Update all audio elements
     bgMusic.muted = isMuted;
     selectSound.muted = isMuted;
+    finishSound.muted = isMuted;
+    resetSound.muted = isMuted;
     
     // Update mute button icon
     const soundOn = muteButton.querySelector('.sound-on');
@@ -366,13 +370,13 @@ function spin() {
     }
     
     isSpinning = true;
-    spinBtn.disabled = false; // Make sure button is not disabled
+    spinBtn.disabled = true; // Initially disable the button
     wheelStopped = false;
     
     // Change button text and appearance for stopping
     spinBtn.textContent = "Çarkı Durdur";
     spinBtn.classList.add("stop");
-    // Don't add disabled class here - we want it clickable
+    spinBtn.classList.add("disabled"); // Add disabled class
     resetBtn.classList.add("disabled");
     
     // FIX: Properly change button functionality
@@ -380,8 +384,16 @@ function spin() {
     spinBtn.removeEventListener('click', spin);
     spinBtn.removeEventListener('click', stopWheel);
     
-    // Add the stopWheel event listener (without {once: true} which was causing issues)
+    // Add the stopWheel event listener
     spinBtn.addEventListener('click', stopWheel);
+
+    // Add a 1-second delay before enabling the stop button
+    setTimeout(() => {
+        if (isSpinning && !isTransitioning) {
+            spinBtn.disabled = false;
+            spinBtn.classList.remove("disabled");
+        }
+    }, 1000);
 
     // Start from 0 rotation
     wheel.style.transform = 'rotate(0deg)';
@@ -452,8 +464,9 @@ function stopWheel() {
     
     isTransitioning = true;
     
-    // Don't disable the button during deceleration to ensure visual feedback
-    spinBtn.disabled = false;
+    // Disable the button during deceleration to ensure consistent experience
+    spinBtn.disabled = true;
+    spinBtn.classList.add("disabled");
     resetBtn.classList.add("disabled");
     
     // Get current rotation
@@ -537,13 +550,65 @@ function handleWheelStop(selectedIndex) {
     const selectedPlayerName = remainingPlayers[selectedIndex];
     showSelectedPlayer(selectedPlayerName);
 
-    // Add the player to the appropriate team
+    // Add the selected player to the appropriate team
     if (currentTeam === 1) {
         team1.push(selectedPlayerName);
         currentTeam = 2;
     } else {
         team2.push(selectedPlayerName);
         currentTeam = 1;
+    }
+
+    // Special case: If there were exactly 2 players remaining, assign the other one automatically
+    if (remainingPlayers.length === 2) {
+        // Find the index of the other player
+        const otherIndex = selectedIndex === 0 ? 1 : 0;
+        const otherPlayerName = remainingPlayers[otherIndex];
+        
+        // Add the other player to the appropriate team
+        if (currentTeam === 1) {
+            team1.push(otherPlayerName);
+            currentTeam = 2;
+        } else {
+            team2.push(otherPlayerName);
+            currentTeam = 1;
+        }
+        
+        // Clear the remaining players list
+        remainingPlayers = [];
+        
+        // Update team displays with both new players
+        updateTeamDisplay();
+        
+        // Change button text back
+        spinBtn.textContent = "Çarkı Çevir";
+        spinBtn.classList.remove("stop");
+        spinBtn.classList.add("disabled"); // Keep disabled as we're done
+        spinBtn.disabled = true;
+        
+        // Reset event listeners
+        spinBtn.removeEventListener('click', stopWheel);
+        spinBtn.addEventListener('click', spin);
+        
+        resetBtn.classList.remove("disabled");
+        isTransitioning = false;
+        isSpinning = false;
+        
+        // Clear the wheel as all players are assigned
+        wheel.innerHTML = '';
+        
+        // After a delay to show the first selected player, show VS animation and play finish sound
+        setTimeout(() => {
+            // Show VS animation and play finish sound
+            showVsAnimation();
+            
+            // Play finish sound when all selections are complete
+            if (!isMuted) {
+                finishSound.play().catch(error => console.log("Finish sound play failed:", error));
+            }
+        }, 1500);
+        
+        return; // Exit early as special case handled
     }
 
     // Update team displays immediately
@@ -558,6 +623,7 @@ function handleWheelStop(selectedIndex) {
         spinBtn.textContent = "Çarkı Çevir";
         spinBtn.classList.remove("stop");
         spinBtn.classList.add("disabled"); // Keep disabled as we're done
+        spinBtn.disabled = true;
         
         // FIX: Properly reset event listeners
         spinBtn.removeEventListener('click', stopWheel);
@@ -567,8 +633,16 @@ function handleWheelStop(selectedIndex) {
         isTransitioning = false;
         isSpinning = false;
         
-        // Show VS animation
+        // Clear the wheel as all players are assigned
+        wheel.innerHTML = '';
+        
+        // Show VS animation and play finish sound
         showVsAnimation();
+        
+        // Play finish sound when all selections are complete
+        if (!isMuted) {
+            finishSound.play().catch(error => console.log("Finish sound play failed:", error));
+        }
     } else {
         // Wait for the selected player animation before updating wheel
         // This ensures the button remains disabled until the player is fully removed
@@ -584,36 +658,36 @@ function handleWheelStop(selectedIndex) {
             // Update the wheel with remaining players
             updateWheel();
             
-            // REMOVE: Don't resume background music
-            // if (bgMusicStarted && !isMuted) {
-            //     bgMusic.volume = 1; // Reset volume
-            //     bgMusic.play().catch(error => console.log("Background music play failed:", error));
-            // }
-            
             // Finally enable buttons and reset states
             resetBtn.classList.remove("disabled");
             spinBtn.classList.remove("disabled");
+            spinBtn.disabled = false;  // Explicitly enable the button
             isTransitioning = false;
             isSpinning = false;
-        }, 1500); // Match the timing with showSelectedPlayer animation
+        }, 2000); // Increased from 500ms to 2000ms (2 seconds) to keep the name visible longer
     }
 }
 
 function showSelectedPlayer(playerName) {
-    selectedPlayer.textContent = playerName;
+    // Clear previous content and add a span for better styling
+    selectedPlayer.innerHTML = `<span>${playerName}</span>`;
+    
+    // Remove active class first
+    selectedPlayer.classList.remove('active');
+    
+    // Reset opacity to ensure animation works properly each time
     selectedPlayer.style.opacity = '0';
-
-    // Animation for the selected player text
-    anime({
-        targets: selectedPlayer,
-        opacity: 1,
-        translateY: [20, 0],
-        duration: 600, // Faster animation
-        easing: 'easeOutQuad'
-    });
+    
+    // Force a reflow before adding the active class to ensure animation triggers
+    void selectedPlayer.offsetWidth;
+    
+    // Add active class to start the animation
+    setTimeout(() => {
+        selectedPlayer.classList.add('active');
+    }, 50);
 
     // Add particles effect
-    createParticles(30); // Reduced particle count
+    createParticles(30);
 }
 
 function updateTeamDisplay() {
@@ -679,6 +753,11 @@ function showVsAnimation() {
 
 function resetGame() {
     if (isTransitioning) return;
+    
+    // Play reset sound
+    if (!isMuted) {
+        resetSound.play().catch(error => console.log("Reset sound play failed:", error));
+    }
 
     // Cancel any active animations
     if (wheelAnimationId) {
@@ -706,10 +785,11 @@ function resetGame() {
     bgMusicStarted = false;
     selectSoundStarted = false;
     
-    // Reset buttons and UI
+    // Reset buttons and UI - FIX: Make sure to remove disabled class and attribute
     spinBtn.disabled = false;
     spinBtn.textContent = "Çarkı Çevir";
     spinBtn.classList.remove("stop");
+    spinBtn.classList.remove("disabled"); // Make sure to remove disabled class
     
     // FIX: Properly reset event listeners
     spinBtn.removeEventListener('click', stopWheel);

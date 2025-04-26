@@ -436,18 +436,129 @@ button.secondary:active {
 }
 
 .selected-player {
-    background-color: rgba(255, 255, 255, 0.1);
-    border-radius: 5px;
-    padding: 0.75rem;
+    position: relative;
+    background: linear-gradient(145deg, rgba(30, 30, 30, 0.8), rgba(20, 20, 20, 0.9));
+    border-radius: 10px;
+    padding: 1rem 1.5rem;
     text-align: center;
-    font-size: 1.2rem;
-    margin-top: 2rem;
-    margin-bottom: 0.5rem;
+    font-size: 1.3rem;
+    margin: 1.5rem auto;
     min-height: 60px;
+    max-width: 90%;
+    width: 280px;
     display: flex;
     align-items: center;
     justify-content: center;
-    opacity: 0;
+    opacity: 0; /* Start invisible but will be made visible with .active class */
+    transform-style: preserve-3d;
+    transform: perspective(800px) rotateX(10deg);
+    box-shadow: 
+        0 15px 25px rgba(0, 0, 0, 0.4),
+        0 5px 10px rgba(139, 109, 67, 0.2),
+        0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    overflow: hidden;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+    letter-spacing: 1px;
+    font-weight: 700;
+    color: #ffb043;
+    text-transform: uppercase;
+}
+
+/* Add light reflection effect */
+.selected-player::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: linear-gradient(
+        45deg, 
+        transparent 0%,
+        rgba(255, 255, 255, 0.05) 30%, 
+        rgba(255, 255, 255, 0.1) 50%, 
+        transparent 70%
+    );
+    transform: rotate(45deg);
+    animation: shineEffect 4s infinite linear;
+    pointer-events: none;
+    z-index: 1;
+}
+
+/* Add border glow effect */
+.selected-player::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 10px;
+    padding: 1px;
+    background: linear-gradient(135deg, #ffb043 0%, #a52a2a 50%, #8b0000 100%);
+    -webkit-mask: 
+        linear-gradient(#fff 0 0) content-box, 
+        linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+    z-index: 2;
+    animation: borderPulse 3s infinite alternate;
+}
+
+/* Make the text visually stand out with 3D effect */
+.selected-player span {
+    display: inline-block;
+    transform: translateZ(10px);
+    position: relative;
+    z-index: 3;
+    text-shadow: 
+        0 1px 0 #ffb043,
+        0 2px 0 rgba(255, 176, 67, 0.8),
+        0 3px 3px rgba(0, 0, 0, 0.5);
+}
+
+/* Animations for the 3D effects */
+@keyframes shineEffect {
+    0% {
+        transform: translate(-50%, -50%) rotate(45deg);
+    }
+    100% {
+        transform: translate(50%, 50%) rotate(45deg);
+    }
+}
+
+@keyframes borderPulse {
+    0% {
+        opacity: 0.6;
+    }
+    50% {
+        opacity: 1;
+    }
+    100% {
+        opacity: 0.6;
+    }
+}
+
+/* Active animation when a player gets selected */
+.selected-player.active {
+    opacity: 1;
+    transform: perspective(800px) rotateX(0deg);
+    animation: selectedPlayerReveal 0.75s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    /* Keep it visible after animation */
+    animation-fill-mode: forwards;
+}
+
+@keyframes selectedPlayerReveal {
+    0% {
+        opacity: 0;
+        transform: perspective(800px) rotateX(30deg) translateY(30px);
+    }
+    40% {
+        opacity: 1;
+    }
+    100% {
+        opacity: 1;
+        transform: perspective(800px) rotateX(0deg) translateY(0);
+    }
 }
 
 .teams-container {
